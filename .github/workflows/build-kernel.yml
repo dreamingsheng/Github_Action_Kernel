@@ -184,7 +184,7 @@ jobs:
         cd common
         git checkout --orphan android12-5.10-2022-04
         git rm -rf .
-        git pull https://github.com/zzh-zzh-zzh/android_gki_kernel_5.10_common.git android12-5.10-2022-04
+        git pull https://github.com/dreamingsheng/android_gki_kernel_5.10_common.git android12-5.10-2022-04
         
         # git clone ${{ env.KERNEL_SOURCE }} -b ${{ env.KERNEL_SOURCE_BRANCH }} android-kernel --depth=1
 
