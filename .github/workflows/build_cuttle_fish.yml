@@ -1,1 +1,63 @@
+name: Build and Package Cuttlefish
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-22.04
+
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v3
+
+    - name: Install required packages
+      run: |
+        sudo apt update
+        sudo apt install -y build-essential devscripts fakeroot git psmisc qemu-kvm unzip zip cdbs config-package-dev debhelper
+
+    - name: Clone android-cuttlefish repository
+      run: |
+        git clone https://github.com/google/android-cuttlefish $HOME/cuttlefish-playground/src/android-cuttlefish
+
+    - name: Build cuttlefish-common package
+      run: |
+        cd $HOME/cuttlefish-playground/src/android-cuttlefish
+        debuild -i -us -uc -b
+
+    - name: Install cuttlefish-common package
+      run: |
+        sudo dpkg -i $HOME/cuttlefish-playground/cuttlefish-common_*_amd64.deb || sudo apt-get install -f -y
+
+    - name: Add user to required groups
+      run: |
+        sudo usermod -aG cvdnetwork $USER
+        sudo usermod -aG kvm $USER
+
+    - name: Download and extract Cuttlefish images and host package
+      run: |
+        mkdir -p $HOME/cuttlefish-playground/cuttlefish-fs
+        cd $HOME/cuttlefish-playground/cuttlefish-fs
+        # 请根据实际情况替换以下 URL
+        curl -O <aosp_cf_x86_phone-img.zip 的 URL>
+        unzip aosp_cf_x86_phone-img-*.zip
+        curl -O <cvd-host_package.tar.gz 的 URL>
+        tar -xvzf cvd-host_package.tar.gz
+
+    - name: Package source and binary
+      run: |
+        mkdir -p package
+        cp -r $HOME/cuttlefish-playground/src package/
+        cp -r $HOME/cuttlefish-playground/cuttlefish-fs package/
+        tar -czvf cuttlefish_package.tar.gz -C package .
+
+    - name: Upload artifact
+      uses: actions/upload-artifact@v3
+      with:
+        name: cuttlefish_package
+        path: cuttlefish_package.tar.gz
 
