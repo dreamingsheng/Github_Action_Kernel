@@ -1,60 +1,39 @@
-name: Build and Package Cuttlefish
+name: Build Cuttlefish and Upload Source & Debs
 
 on:
-  push:
-    branches: [ main ]
-  pull_request:
-    branches: [ main ]
   workflow_dispatch:
 
 jobs:
-  build:
+  build-cuttlefish:
     runs-on: ubuntu-22.04
 
     steps:
-    - name: Install required packages
+    - name: Checkout android-cuttlefish
       run: |
-        sudo apt update
-        sudo apt install -y build-essential devscripts fakeroot git psmisc qemu-kvm unzip zip cdbs config-package-dev debhelper
+        git clone https://github.com/google/android-cuttlefish.git
+        cd android-cuttlefish
+        echo "repo cloned"
 
-    - name: Clone android-cuttlefish repository
+    - name: Install required build dependencies
       run: |
-        git clone https://github.com/google/android-cuttlefish $HOME/cuttlefish-playground/src/android-cuttlefish
+        sudo apt-get update
+        sudo apt-get install -y git devscripts equivs config-package-dev debhelper-compat golang curl
 
-    - name: Build cuttlefish-common package
+    - name: Build .deb packages
       run: |
-        cd $HOME/cuttlefish-playground/src/android-cuttlefish
-        debuild -i -us -uc -b
+        cd android-cuttlefish
+        tools/buildutils/build_packages.sh
 
-    - name: Install cuttlefish-common package
+    - name: Package source and .deb files
       run: |
-        sudo dpkg -i $HOME/cuttlefish-playground/cuttlefish-common_*_amd64.deb || sudo apt-get install -f -y
-
-    - name: Add user to required groups
-      run: |
-        sudo usermod -aG cvdnetwork $USER
-        sudo usermod -aG kvm $USER
-
-    - name: Download and extract Cuttlefish images and host package
-      run: |
-        mkdir -p $HOME/cuttlefish-playground/cuttlefish-fs
-        cd $HOME/cuttlefish-playground/cuttlefish-fs
-        # 请根据实际情况替换以下 URL
-        curl -O <aosp_cf_x86_phone-img.zip 的 URL>
-        unzip aosp_cf_x86_phone-img-*.zip
-        curl -O <cvd-host_package.tar.gz 的 URL>
-        tar -xvzf cvd-host_package.tar.gz
-
-    - name: Package source and binary
-      run: |
+        cd android-cuttlefish
         mkdir -p package
-        cp -r $HOME/cuttlefish-playground/src package/
-        cp -r $HOME/cuttlefish-playground/cuttlefish-fs package/
+        cp -r . package/  # 复制整个源码文件夹
+        cp *.deb package/  # 复制生成的 .deb 包
         tar -czvf cuttlefish_package.tar.gz -C package .
 
-    - name: Upload artifact
+    - name: Upload source and .deb artifacts
       uses: actions/upload-artifact@v3
       with:
-        name: cuttlefish_package
+        name: cuttlefish-source-and-debs
         path: cuttlefish_package.tar.gz
-
